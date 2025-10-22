@@ -6,12 +6,15 @@ export default {
     './public/**/*.html',
     './src/**/*.{js,jsx,ts,tsx,css}',
   ],
-  // Force include specific classes while diagnosing config loading
-  safelist: [
-    'text-green-500',
-  ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // Custom colors for both old and new schemes
+        'old-text': '#000000', // black
+        'new-text': '#519e08', // green
+        'old-bg': '#f3f4f6',   // gray-100
+        'new-bg': '#f3f4f6',   // same background
+      },
+    },
   },
-  plugins: [],
 };

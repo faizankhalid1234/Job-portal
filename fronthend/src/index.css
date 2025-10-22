@@ -1,15 +1,32 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* You can add custom styles below (avoid @apply here to prevent build errors) */
-:root{
+/* Custom color variables for both old and new schemes */
+:root {
   --bg: #f3f4f6; /* gray-100 */
-  --text: #4e0128; /* gray-900 */
+  --text: #000000; /* black - old color */
+  --text-new: #519e08; /* green - new color */
+  
+  /* Default to old color scheme */
+  --current-text: var(--text);
+  --current-bg: var(--bg);
 }
+
+/* New color scheme class */
+.color-scheme-new {
+  --current-text: var(--text-new);
+  --current-bg: var(--bg);
+}
+
+/* Old color scheme class */
+.color-scheme-old {
+  --current-text: var(--text);
+  --current-bg: var(--bg);
+}
+
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: var(--current-bg);
+  color: var(--current-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
