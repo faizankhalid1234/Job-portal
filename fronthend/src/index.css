@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can add custom styles below (avoid @apply here to prevent build errors) */
+:root{
+  --bg: #f3f4f6; /* gray-100 */
+  --text: #4e0128; /* gray-900 */
+}
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
