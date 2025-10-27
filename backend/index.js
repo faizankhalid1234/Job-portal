@@ -22,7 +22,7 @@ app.use(express.json());
 app.use(cors());
 
 // API Routes
-app.use("/api/users", userRoutes);
+app.use("/api/v1/user", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);

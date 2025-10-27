@@ -1,14 +1,12 @@
 import express from "express";
-import { registerCompany, getCompanies } from "../controllers/company.controller.js";
+import { createCompany, getCompanies, getCompanyById, updateCompany, deleteCompany } from "../controllers/company.controller.js";
 
 const router = express.Router();
 
-// Register new company
-// POST → /api/companies/register
-router.post("/register", registerCompany);
-
-// Get all companies
-// GET → /api/companies/
+router.post("/", createCompany);
 router.get("/", getCompanies);
+router.get("/:id", getCompanyById);
+router.put("/:id", updateCompany);
+router.delete("/:id", deleteCompany);
 
 export default router;

@@ -2,24 +2,31 @@ import Application from "../models/application.model.js";
 
 export const applyJob = async (req, res) => {
   try {
-    const { jobId, userId } = req.body;
     const application = await Application.create({
-      job: jobId,
-      applicant: userId,
+      user: req.body.userId,
+      job: req.body.jobId,
+      resume: req.body.resume || ""
     });
-    res.status(201).json({ message: "Applied successfully", application });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(201).json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-export const getApplications = async (req, res) => {
+export const getApplicationsByUser = async (req, res) => {
   try {
-    const applications = await Application.find()
-      .populate("job")
-      .populate("applicant");
-    res.status(200).json({ applications });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const applications = await Application.find({ user: req.params.userId }).populate("job");
+    res.json(applications);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const updateApplicationStatus = async (req, res) => {
+  try {
+    const app = await Application.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+    res.json(app);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
