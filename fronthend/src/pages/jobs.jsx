@@ -6,7 +6,7 @@ const FilterCard = () => <div className="bg-gray-100 p-4 rounded-lg shadow-md mb
 
 const Jobs = () => {
   // Function to generate random jobs
-  const generateRandomJobs = () => {
+  const generateRandomJobs = (startId) => {
     const jobTitles = [
       "Software Engineer", "Data Analyst", "UX Designer", "Marketing Specialist", 
       "Project Manager", "DevOps Engineer", "Content Writer", "Full Stack Developer",
@@ -18,20 +18,20 @@ const Jobs = () => {
       "Innovate Solutions", "CloudTech", "MediaHub", "StartupXYZ", 
       "GlobalTech", "DesignPro", "CodeMasters", "BizSolutions"
     ];
-  const locations = [
-  "Karachi, Sindh",
-  "Lahore, Punjab",
-  "Islamabad, Capital Territory",
-  "Rawalpindi, Punjab",
-  "Faisalabad, Punjab",
-  "Multan, Punjab",
-  "Peshawar, Khyber Pakhtunkhwa",
-  "Quetta, Balochistan",
-  "Hyderabad, Sindh",
-  "Sialkot, Punjab",
-  "Gujranwala, Punjab",
-  "Bahawalpur, Punjab"
-];
+    const locations = [
+      "Karachi, Sindh",
+      "Lahore, Punjab",
+      "Islamabad, Capital Territory",
+      "Rawalpindi, Punjab",
+      "Faisalabad, Punjab",
+      "Multan, Punjab",
+      "Peshawar, Khyber Pakhtunkhwa",
+      "Quetta, Balochistan",
+      "Hyderabad, Sindh",
+      "Sialkot, Punjab",
+      "Gujranwala, Punjab",
+      "Bahawalpur, Punjab"
+    ];
 
     const descriptions = [
       "Develop and maintain software applications using modern technologies.",
@@ -54,7 +54,7 @@ const Jobs = () => {
     const jobs = [];
     for (let i = 0; i < 7; i++) {
       jobs.push({
-        id: i + 1,
+        id: startId + i,
         title: jobTitles[Math.floor(Math.random() * jobTitles.length)],
         company: companies[Math.floor(Math.random() * companies.length)],
         location: locations[Math.floor(Math.random() * locations.length)],
@@ -70,9 +70,12 @@ const Jobs = () => {
   const [appliedJobs, setAppliedJobs] = useState(new Set()); // Track applied jobs
   const [showModal, setShowModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [nextId, setNextId] = useState(1); // Track the next ID for unique job IDs
 
   useEffect(() => {
-    setJobs(generateRandomJobs());
+    const initialJobs = generateRandomJobs(nextId);
+    setJobs(initialJobs);
+    setNextId(prev => prev + 7);
   }, []);
 
   const handleApplyNow = (job) => {
@@ -85,6 +88,12 @@ const Jobs = () => {
     setAppliedJobs(prev => new Set(prev).add(selectedJob.id));
     setShowModal(false);
     alert(`Application submitted for ${selectedJob.title} at ${selectedJob.company}!`);
+  };
+
+  const handleLoadMore = () => {
+    const newJobs = generateRandomJobs(nextId);
+    setJobs(prev => [...prev, ...newJobs]);
+    setNextId(prev => prev + 7);
   };
 
   return (
@@ -138,7 +147,7 @@ const Jobs = () => {
         {/* Load More Button */}
         <div className="text-center mt-8">
           <button 
-            onClick={() => setJobs(generateRandomJobs())}
+            onClick={handleLoadMore}
             className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors"
           >
             Load More Jobs
