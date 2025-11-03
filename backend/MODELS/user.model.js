@@ -15,8 +15,14 @@ const userSchema = new mongoose.Schema(
         resumeOriginalName: { type: String },
         company: { type: mongoose.Schema.Types.ObjectId, ref: "Company" },
         profilePicture: { type: String },
+        appliedJobs: [
+          {
+            jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" },
+            appliedAt: { type: Date, default: Date.now },
+          },
+        ],
       },
-      default: {}, // ✅ Default empty profile object
+      default: {}, // Default empty profile object
     },
   },
   { timestamps: true }

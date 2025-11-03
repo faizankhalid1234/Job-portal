@@ -23,9 +23,13 @@ connectDB();
 const app = express();
 
 // ================== Middlewares ==================
-app.use(cors());              // Cross-Origin requests
-app.use(express.json());      // Parse JSON body
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded body (optional)
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ✅ Serve Uploaded Images (very important)
+import path from "path";
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ================== API Routes ==================
 app.use("/api/v1/user", userRoutes);
@@ -34,7 +38,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);
 
 // ================== Public Folder ==================
-app.use(express.static("public")); // Serve static HTML files
+app.use(express.static("public"));
 
 // ================== Start Server ==================
 const PORT = process.env.PORT || 8000;

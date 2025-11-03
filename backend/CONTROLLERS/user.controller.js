@@ -7,39 +7,35 @@ export const registerUser = async (req, res) => {
   try {
     const { firstName, lastName, email, password, userType } = req.body;
 
-console.log(" Body:", req.body);
-console.log(" Files:", req.files || req.file);
-console.log(" Values =>", {
-  firstName,
-  lastName,
-  email,
-  password,
-  userType,
-});
+    console.log("Body:", req.body);
+    console.log("Files:", req.files || req.file);
 
-
-    // ✅ Validate input
+    // Validate input
     if (!firstName || !lastName || !email || !password || !userType) {
-      return res.status(400).json({ message: "Please fill all required fields", Success: false });
+      return res
+        .status(400)
+        .json({ message: "Please fill all required fields", success: false });
     }
 
-    // ✅ Check if user already exists
+    // Check if user already exists
     const checkUser = await User.findOne({ email });
     if (checkUser) {
-      return res.status(400).json({ message: "User already exists", Success: false });
+      return res
+        .status(400)
+        .json({ message: "User already exists", success: false });
     }
 
-    // ✅ Hash password
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // ✅ Create user
+    // Create user
     const user = await User.create({
       firstName,
       lastName,
       email,
       password: hashedPassword,
-      userType: userType,
+      userType,
       profile: {}, // empty profile initially
     });
 
@@ -65,26 +61,20 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ Validate input
     if (!email || !password) {
-      return res.status(400).json({ message: "Please enter email and password" });
+      return res
+        .status(400)
+        .json({ message: "Please enter email and password" });
     }
 
-    // ✅ Check if user exists
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // ✅ Compare password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    // ✅ Generate JWT
     const token = jwt.sign(
-      { id: user._id, email: user.email, userType: user.userType },
+      { userId: user._id, email: user.email, userType: user.userType },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -110,22 +100,35 @@ export const loginUser = async (req, res) => {
 // ================= UPDATE PROFILE =================
 export const updateProfile = async (req, res) => {
   try {
-    const { userId, firstName, lastName, email, profile } = req.body;
+    const userId = req.id; // from JWT via isAuthenticated middleware
+    const { firstName, lastName, email } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
+    // Handle nested profile fields and file uploads
+    const profile = {
+      phone: req.body["profile[phone]"] || "",
+      location: req.body["profile[location]"] || "",
+      skills: req.body["profile[skills]"]
+        ? Array.isArray(req.body["profile[skills]"])
+          ? req.body["profile[skills]"]
+          : [req.body["profile[skills]"]]
+        : [],
+    };
+
+    if (req.files) {
+      req.files.forEach((file) => {
+        if (file.fieldname === "profilePicture") profile.profilePicture = file.path;
+        if (file.fieldname === "resume") profile.resume = file.path;
+      });
     }
 
-    // ✅ Find and update user
+    // Update user
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { firstName, lastName, email, profile },
-      { new: true } // return updated document
+      { new: true }
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json({
       message: "Profile updated successfully",
@@ -133,6 +136,32 @@ export const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Profile Update Error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ================= GET PROFILE =================
+export const getProfile = async (req, res) => {
+  try {
+    const userId = req.id; // set by isAuthenticated middleware
+
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "User not found", success: false });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile fetched successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Get Profile Error:", error);
+    res.status(500).json({
+      message: "Server error while fetching profile",
+      error: error.message,
+    });
   }
 };

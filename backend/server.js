@@ -3,10 +3,11 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 
 // Routes
-import userRoutes from "./routes/user.routes.js";
+import userRoutes from "./ROUTES/user.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import applicationRoutes from "./routes/application.routes.js";
@@ -20,10 +21,23 @@ dotenv.config({ path: `${__dirname}/.env` });
 connectDB();
 
 const app = express();
-app.use(express.json());
-app.use(cors());
 
-// API routes
+// ✅ Middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// ✅ CORS config for React frontend
+app.use(cors({
+  origin: "http://localhost:5174",
+  credentials: true,
+}));
+
+// ✅ Serve uploaded files (profile images, resumes)
+import path from "path";
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/jobs", jobRoutes);
