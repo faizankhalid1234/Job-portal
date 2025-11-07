@@ -1,210 +1,346 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from "react";
+import axios from "axios";
 
-// Placeholder components (you can replace with your actual components)
-const Navbar = () => <div className="bg-green-600 text-white p-4">Navbar</div>;
-const FilterCard = () => <div className="bg-gray-100 p-4 rounded-lg shadow-md mb-6">Filter Options</div>;
+// ----------------- User Context -----------------
+const UserContext = React.createContext({
+  name: "",
+  email: "",
+  profileImage: null,
+});
 
+// ----------------- Navbar -----------------
+const Navbar = () => {
+  const user = useContext(UserContext);
+
+  return (
+    <div className="bg-green-600 text-white p-4 flex justify-between items-center">
+      <h1 className="text-lg font-bold">Job Portal</h1>
+      <div className="text-sm">
+        {user.name && user.email ? (
+          <span>
+            Welcome, {user.name} ({user.email})
+          </span>
+        ) : (
+          <span>Welcome, Guest</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ----------------- Filter Card -----------------
+const FilterCard = ({ filters, setFilters }) => {
+  const user = useContext(UserContext);
+
+  return (
+    <div className="bg-gray-100 p-4 rounded-lg shadow-md mb-6">
+      <h3 className="text-lg font-semibold mb-2">Filter Options</h3>
+      <div className="text-sm text-gray-700 mb-4">
+        {user.name && user.email ? (
+          <p>
+            User: {user.name} ({user.email})
+          </p>
+        ) : (
+          <p>User: Guest</p>
+        )}
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Job Title
+        </label>
+        <input
+          type="text"
+          value={filters.title}
+          onChange={(e) => setFilters({ ...filters, title: e.target.value })}
+          placeholder="e.g. Developer"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Location
+        </label>
+        <input
+          type="text"
+          value={filters.location}
+          onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+          placeholder="e.g. Karachi"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+        />
+      </div>
+    </div>
+  );
+};
+
+// ----------------- Jobs Page -----------------
 const Jobs = () => {
-  // Function to generate random jobs
-  const generateRandomJobs = (startId) => {
-    const jobTitles = [
-      "Software Engineer", "Data Analyst", "UX Designer", "Marketing Specialist", 
-      "Project Manager", "DevOps Engineer", "Content Writer", "Full Stack Developer",
-      "Mobile App Developer", "AI Engineer", "Graphic Designer", "Sales Manager",
-      "HR Specialist", "Product Manager", "Cybersecurity Analyst"
-    ];
-    const companies = [
-      "TechCorp", "DataInsights Inc.", "CreativeStudio", "BrandBoost", 
-      "Innovate Solutions", "CloudTech", "MediaHub", "StartupXYZ", 
-      "GlobalTech", "DesignPro", "CodeMasters", "BizSolutions"
-    ];
-    const locations = [
-      "Karachi, Sindh",
-      "Lahore, Punjab",
-      "Islamabad, Capital Territory",
-      "Rawalpindi, Punjab",
-      "Faisalabad, Punjab",
-      "Multan, Punjab",
-      "Peshawar, Khyber Pakhtunkhwa",
-      "Quetta, Balochistan",
-      "Hyderabad, Sindh",
-      "Sialkot, Punjab",
-      "Gujranwala, Punjab",
-      "Bahawalpur, Punjab"
-    ];
+  const user = useContext(UserContext);
 
-    const descriptions = [
-      "Develop and maintain software applications using modern technologies.",
-      "Analyze large datasets to provide insights and support business decisions.",
-      "Design intuitive user interfaces and experiences for users.",
-      "Develop and execute marketing campaigns across digital channels.",
-      "Lead project teams to deliver projects on time and within budget.",
-      "Manage infrastructure and deployment pipelines for applications.",
-      "Create engaging content for blogs, websites, and social media.",
-      "Build end-to-end web applications with front-end and back-end skills.",
-      "Develop mobile applications for iOS and Android platforms.",
-      "Work on artificial intelligence and machine learning projects.",
-      "Create visual designs for websites, apps, and marketing materials.",
-      "Manage sales teams and drive revenue growth for the company.",
-      "Handle human resources functions including recruitment and employee relations.",
-      "Oversee product development from ideation to launch.",
-      "Protect systems and networks from cyber threats and vulnerabilities."
-    ];
-
-    const jobs = [];
-    for (let i = 0; i < 7; i++) {
-      jobs.push({
-        id: startId + i,
-        title: jobTitles[Math.floor(Math.random() * jobTitles.length)],
-        company: companies[Math.floor(Math.random() * companies.length)],
-        location: locations[Math.floor(Math.random() * locations.length)],
-        description: descriptions[Math.floor(Math.random() * descriptions.length)],
-        salary: `$${(Math.floor(Math.random() * 50) + 50) * 1000} - $${(Math.floor(Math.random() * 50) + 100) * 1000}`,
-        posted: `${Math.floor(Math.random() * 30) + 1} days ago`
-      });
-    }
-    return jobs;
-  };
-
+  const [filters, setFilters] = useState({ title: "", location: "" });
   const [jobs, setJobs] = useState([]);
-  const [appliedJobs, setAppliedJobs] = useState(new Set()); // Track applied jobs
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [showModal, setShowModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [nextId, setNextId] = useState(1); // Track the next ID for unique job IDs
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Job form for Add/Edit
+  const [jobForm, setJobForm] = useState({
+    title: "",
+    company: "",
+    location: "",
+    salary: "",
+    description: "",
+  });
+
+  // ----------------- Fetch Jobs -----------------
   useEffect(() => {
-    const initialJobs = generateRandomJobs(nextId);
-    setJobs(initialJobs);
-    setNextId(prev => prev + 7);
+    const fetchJobs = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/api/v1/job/all");
+        setJobs(res.data.jobs || []);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
   }, []);
 
+  // ----------------- Apply Job -----------------
   const handleApplyNow = (job) => {
-    setSelectedJob(job);
+    setAppliedJobs((prev) => new Set(prev).add(job._id));
+    alert(`Application submitted for ${job.title}!`);
+  };
+
+  // ----------------- Add / Edit Job -----------------
+  const openAddModal = () => {
+    setIsEditing(false);
+    setJobForm({
+      title: "",
+      company: "",
+      location: "",
+      salary: "",
+      description: "",
+    });
     setShowModal(true);
   };
 
-  const handleSubmitApplication = () => {
-    // Simulate application submission
-    setAppliedJobs(prev => new Set(prev).add(selectedJob.id));
-    setShowModal(false);
-    alert(`Application submitted for ${selectedJob.title} at ${selectedJob.company}!`);
+  const openEditModal = (job) => {
+    setIsEditing(true);
+    setSelectedJob(job);
+    setJobForm({
+      title: job.title || "",
+      company: job.company?.name || job.company || "",
+      location: job.location || "",
+      salary: job.salary || "",
+      description: job.description || "",
+    });
+    setShowModal(true);
   };
 
-  const handleLoadMore = () => {
-    const newJobs = generateRandomJobs(nextId);
-    setJobs(prev => [...prev, ...newJobs]);
-    setNextId(prev => prev + 7);
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this job?")) return;
+    try {
+      await axios.delete(`http://localhost:8000/api/v1/job/${id}`);
+      setJobs((prev) => prev.filter((job) => job._id !== id));
+      alert("Job deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete job");
+    }
   };
+
+  const handleSubmitJob = async (e) => {
+    e.preventDefault();
+    try {
+      if (isEditing) {
+        // Update existing job
+        const res = await axios.put(
+          `http://localhost:8000/api/v1/job/${selectedJob._id}`,
+          jobForm
+        );
+        setJobs((prev) =>
+          prev.map((j) => (j._id === selectedJob._id ? res.data.job : j))
+        );
+        alert("Job updated successfully!");
+      } else {
+        // Add new job
+       const res = await axios.post("http://localhost:8000/api/v1/job/create", jobForm);
+        setJobs((prev) => [...prev, res.data.job]);
+        alert("New job added!");
+      }
+      setShowModal(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save job");
+    }
+  };
+
+  // ----------------- Filtered Jobs -----------------
+  const filteredJobs = jobs.filter(
+    (job) =>
+      (job.title || "").toLowerCase().includes(filters.title.toLowerCase()) &&
+      (job.location || "")
+        .toLowerCase()
+        .includes(filters.location.toLowerCase())
+  );
+
+  if (loading)
+    return <p className="text-center mt-10 text-gray-700">Loading jobs...</p>;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <FilterCard />
-        
-        {/* Jobs Grid */}
+        {/* Filter and Add Button */}
+        <div className="flex justify-between items-center mb-6">
+          <FilterCard filters={filters} setFilters={setFilters} />
+          <button
+            onClick={openAddModal}
+            className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700"
+          >
+            ➕ Add Task
+          </button>
+        </div>
+
+        {/* Job List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {jobs.map((job) => (
-            <div key={job.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">{job.title}</h3>
-                    <p className="text-green-600 font-medium">{job.company}</p>
+          {filteredJobs.length > 0 ? (
+            filteredJobs.map((job) => (
+              <div
+                key={job._id}
+                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
+              >
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    {job.title || "Untitled Job"}
+                  </h3>
+                  <p className="text-green-600 font-medium mb-1">
+                    {job.company?.name || job.company || "Unknown Company"}
+                  </p>
+                  <p className="text-gray-600 mb-2">
+                    📍 {job.location || "Unknown Location"}
+                  </p>
+                  <p className="text-gray-700 mb-4 line-clamp-3">
+                    {job.description || "No description available."}
+                  </p>
+
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-lg font-bold text-green-600">
+                      {job.salary || "Negotiable"}
+                    </span>
+                    <button
+                      onClick={() => handleApplyNow(job)}
+                      disabled={appliedJobs.has(job._id)}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        appliedJobs.has(job._id)
+                          ? "bg-gray-400 text-gray-200"
+                          : "bg-green-500 text-white hover:bg-green-600"
+                      }`}
+                    >
+                      {appliedJobs.has(job._id) ? "Applied" : "Apply"}
+                    </button>
                   </div>
-                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{job.posted}</span>
-                </div>
-                
-                <div className="flex items-center text-gray-600 mb-3">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {job.location}
-                </div>
-                
-                <p className="text-gray-700 mb-4 line-clamp-3">{job.description}</p>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-green-600">{job.salary}</span>
-                  <button 
-                    onClick={() => handleApplyNow(job)}
-                    disabled={appliedJobs.has(job.id)}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      appliedJobs.has(job.id) 
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                        : 'bg-green-500 text-white hover:bg-green-600'
-                    }`}
-                  >
-                    {appliedJobs.has(job.id) ? 'Applied' : 'Apply Now'}
-                  </button>
+
+                  {/* New Buttons */}
+                  <div className="flex justify-between">
+                    <button
+                      onClick={() => openEditModal(job)}
+                      className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(job._id)}
+                      className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Load More Button */}
-        <div className="text-center mt-8">
-          <button 
-            onClick={handleLoadMore}
-            className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors"
-          >
-            Load More Jobs
-          </button>
+            ))
+          ) : (
+            <p className="text-gray-600 text-center col-span-full">
+              No jobs found with these filters.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Application Modal */}
-      {showModal && selectedJob && (
+      {/* ----------------- Add/Edit Modal ----------------- */}
+      {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">Apply for {selectedJob.title}</h2>
-            <p className="text-gray-600 mb-4">at {selectedJob.company}</p>
-            
-            <form onSubmit={(e) => { e.preventDefault(); handleSubmitApplication(); }}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  required 
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" 
-                  placeholder="Enter your full name"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input 
-                  type="email" 
-                  required 
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" 
-                  placeholder="Enter your email"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
-                <input 
-                  type="file" 
-                  accept=".pdf,.doc,.docx" 
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" 
-                />
-              </div>
-              
+            <h2 className="text-2xl font-bold mb-4">
+              {isEditing ? "Edit Job" : "Add New Job"}
+            </h2>
+            <form onSubmit={handleSubmitJob}>
+              <input
+                type="text"
+                value={jobForm.title}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, title: e.target.value })
+                }
+                placeholder="Job Title"
+                className="w-full mb-3 px-3 py-2 border rounded-md"
+                required
+              />
+              <input
+                type="text"
+                value={jobForm.company}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, company: e.target.value })
+                }
+                placeholder="Company Name"
+                className="w-full mb-3 px-3 py-2 border rounded-md"
+                required
+              />
+              <input
+                type="text"
+                value={jobForm.location}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, location: e.target.value })
+                }
+                placeholder="Location"
+                className="w-full mb-3 px-3 py-2 border rounded-md"
+                required
+              />
+              <input
+                type="text"
+                value={jobForm.salary}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, salary: e.target.value })
+                }
+                placeholder="Salary"
+                className="w-full mb-3 px-3 py-2 border rounded-md"
+              />
+              <textarea
+                value={jobForm.description}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, description: e.target.value })
+                }
+                placeholder="Job Description"
+                className="w-full mb-4 px-3 py-2 border rounded-md"
+              />
+
               <div className="flex justify-end space-x-2">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="px-4 py-2 bg-gray-300 rounded-lg"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                 >
-                  Submit Application
+                  {isEditing ? "Update" : "Add"}
                 </button>
               </div>
             </form>

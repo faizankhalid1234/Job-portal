@@ -10,8 +10,8 @@ const UpdateProfile = () => {
     location: "",
     skills: "",
   });
-  const [selectedFile, setSelectedFile] = useState(null); // Profile picture
-  const [resumeFile, setResumeFile] = useState(null);     // Resume file
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [resumeFile, setResumeFile] = useState(null);
   const navigate = useNavigate();
 
   // ================= FETCH PROFILE =================
@@ -25,7 +25,7 @@ const UpdateProfile = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (res.ok) {
+        if (res.ok || data.success) {
           setFormData({
             firstName: data.user.firstName || "",
             lastName: data.user.lastName || "",
@@ -62,14 +62,18 @@ const UpdateProfile = () => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/login");
 
-    // Use FormData for file uploads
     const form = new FormData();
     form.append("firstName", formData.firstName);
     form.append("lastName", formData.lastName);
     form.append("email", formData.email);
+
+    // ✅ Nested profile fields keys must match backend
     form.append("profile[phone]", formData.phone);
     form.append("profile[location]", formData.location);
-    form.append("profile[skills]", formData.skills.split(",").map(s => s.trim()));
+    form.append(
+      "profile[skills]",
+      JSON.stringify(formData.skills.split(",").map((s) => s.trim()))
+    );
 
     if (selectedFile) form.append("profilePicture", selectedFile);
     if (resumeFile) form.append("resume", resumeFile);
@@ -77,16 +81,14 @@ const UpdateProfile = () => {
     try {
       const res = await fetch("http://localhost:8000/api/v1/user/update", {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
 
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok || data.success) {
         alert("✅ Profile updated successfully!");
-        navigate("/profile"); // Changed to /profile (assuming that's where users go after update)
+        navigate("/profile");
       } else {
         alert(data.message || "❌ Update failed");
       }
@@ -158,7 +160,6 @@ const UpdateProfile = () => {
           className="w-full border rounded p-2"
         />
 
-        {/* File uploads */}
         <input
           type="file"
           name="profilePicture"

@@ -1,5 +1,6 @@
 import Company from "../models/company.model.js";
 
+// ----------------- Create Company -----------------
 export const createCompany = async (req, res) => {
   try {
     const company = await Company.create(req.body);
@@ -9,6 +10,7 @@ export const createCompany = async (req, res) => {
   }
 };
 
+// ----------------- Get All Companies -----------------
 export const getCompanies = async (req, res) => {
   try {
     const companies = await Company.find();
@@ -18,6 +20,7 @@ export const getCompanies = async (req, res) => {
   }
 };
 
+// ----------------- Get Company By ID -----------------
 export const getCompanyById = async (req, res) => {
   try {
     const company = await Company.findById(req.params.id);
@@ -28,6 +31,7 @@ export const getCompanyById = async (req, res) => {
   }
 };
 
+// ----------------- Update Company -----------------
 export const updateCompany = async (req, res) => {
   try {
     const company = await Company.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -37,6 +41,7 @@ export const updateCompany = async (req, res) => {
   }
 };
 
+// ----------------- Delete Company -----------------
 export const deleteCompany = async (req, res) => {
   try {
     await Company.findByIdAndDelete(req.params.id);
