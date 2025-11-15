@@ -7,21 +7,23 @@ import Signup from "./pages/Signup";
 import Jobs from "./pages/Jobs";
 import Browse from "./pages/Browse";
 import Profile from "./pages/Profile";
-import { AuthProvider } from "./contexts/AuthContext"; // ✅ Import AuthProvider
 import UpdateProfile from "./pages/UpdateProfile";
+import { AuthProvider } from "./contexts/AuthContext";
+import Footer from "./components/ui/Footer"; // ✅ Footer import
 
-// ✅ Layout component with Navbar
+// ✅ Layout component with Navbar and Footer
 const Layout = ({ children }) => (
-  <>
+  <div className="flex flex-col min-h-screen">
     <Navbar />
-    {children}
-  </>
+    <div className="flex-grow">{children}</div> {/* Page content */}
+    <Footer /> {/* Footer hamesha niche */}
+  </div>
 );
 
 // ✅ Main App Component
 function App() {
   return (
-    <AuthProvider> {/* ✅ Wrap everything with AuthProvider */}
+    <AuthProvider>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -29,10 +31,8 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/browse" element={<Browse />} />
-          <Route path="/profile" element={<Profile />} /> {/* ✅ Fixed */}
-         <Route path="/update-profile" element={<UpdateProfile />} />
-<Route path="/update-profile" element={<UpdateProfile />} />
-
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/update-profile" element={<UpdateProfile />} />
         </Routes>
       </Layout>
     </AuthProvider>

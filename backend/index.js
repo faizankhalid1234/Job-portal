@@ -1,48 +1,60 @@
+// index.js
 import express from "express";
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import cors from "cors";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import connectDB from "./config/db.js";
 
 // Routes
 import userRoutes from "./ROUTES/user.routes.js";
-import companyRoutes from "./ROUTES/company.routes.js";
 import jobRoutes from "./ROUTES/job.routes.js";
-import applicationRoutes from "./ROUTES/application.routes.js";
 
-// Setup env and paths
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, ".env") });
-
-// Connect to DB
-connectDB();
-
+// ------------------- Setup -------------------
+dotenv.config();
 const app = express();
+const PORT = process.env.PORT || 8000;
 
-// Middlewares
-app.use(cors({ origin: "http://localhost:5174", credentials: true }));
+// Fix __dirname for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ------------------- Middleware -------------------
+app.use(
+  cors({
+    origin: "http://localhost:5174", // 👈 your frontend port (Vite usually)
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files
-app.use("/uploads", express.static(join(__dirname, "uploads")));
+// ✅ Serve static files from uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ================= ROUTES =================
+// ------------------- Routes -------------------
 app.use("/api/v1/user", userRoutes);
-app.use("/api/v1/company", companyRoutes);
-app.use("/api/v1/job", jobRoutes); // ✅ Corrected path
-app.use("/api/v1/application", applicationRoutes);
+app.use("/api/v1/job", jobRoutes);
+app.use("/uploads", express.static("uploads"));
 
-// Default route
+
+// Test route
 app.get("/", (req, res) => {
   res.send("✅ Job Portal API is running successfully...");
 });
 
-// Public folder (optional)
-app.use(express.static("public"));
+// ------------------- Connect DB & Start Server -------------------
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on http://localhost:${PORT}`)
+    );
+  } catch (error) {
+    console.error("❌ Failed to connect to database:", error);
+    process.exit(1);
+  }
+};
 
-// Start server
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+startServer();

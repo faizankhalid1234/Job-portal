@@ -1,28 +1,31 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import axios from "axios";
+
 
 // ----------------- User Context -----------------
 const UserContext = React.createContext({
   name: "",
   email: "",
   profileImage: null,
+  role: "user", // default to "user"
 });
 
 // ----------------- Navbar -----------------
-const Navbar = () => {
-  const user = useContext(UserContext);
-
+const Navbar = ({ role, setRole }) => {
   return (
     <div className="bg-green-600 text-white p-4 flex justify-between items-center">
       <h1 className="text-lg font-bold">Job Portal</h1>
-      <div className="text-sm">
-        {user.name && user.email ? (
-          <span>
-            Welcome, {user.name} ({user.email})
-          </span>
-        ) : (
-          <span>Welcome, Guest</span>
-        )}
+
+      <div className="flex items-center space-x-3">
+        <label className="font-medium">Role:</label>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="text-black px-2 py-1 rounded-md"
+        >
+          <option value="user">User</option>
+          <option value="recruiter">Recruiter</option>
+        </select>
       </div>
     </div>
   );
@@ -30,20 +33,9 @@ const Navbar = () => {
 
 // ----------------- Filter Card -----------------
 const FilterCard = ({ filters, setFilters }) => {
-  const user = useContext(UserContext);
-
   return (
     <div className="bg-gray-100 p-4 rounded-lg shadow-md mb-6">
       <h3 className="text-lg font-semibold mb-2">Filter Options</h3>
-      <div className="text-sm text-gray-700 mb-4">
-        {user.name && user.email ? (
-          <p>
-            User: {user.name} ({user.email})
-          </p>
-        ) : (
-          <p>User: Guest</p>
-        )}
-      </div>
 
       <div className="mb-3">
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -76,17 +68,25 @@ const FilterCard = ({ filters, setFilters }) => {
 
 // ----------------- Jobs Page -----------------
 const Jobs = () => {
-  const user = useContext(UserContext);
+  const [role, setRole] = useState("user"); // dropdown control
+  const jobListRef = useRef(null);
 
   const [filters, setFilters] = useState({ title: "", location: "" });
   const [jobs, setJobs] = useState([]);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
+  const [applicantsData, setApplicantsData] = useState([]); // recruiter view
+
   const [showModal, setShowModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showAppliedList, setShowAppliedList] = useState(false);
+  const [showApplicantsList, setShowApplicantsList] = useState(false);
 
-  // Job form for Add/Edit
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [jobToApply, setJobToApply] = useState(null);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+
   const [jobForm, setJobForm] = useState({
     title: "",
     company: "",
@@ -112,11 +112,34 @@ const Jobs = () => {
 
   // ----------------- Apply Job -----------------
   const handleApplyNow = (job) => {
-    setAppliedJobs((prev) => new Set(prev).add(job._id));
-    alert(`Application submitted for ${job.title}!`);
+    if (role !== "user") {
+      alert("Only users can apply for jobs.");
+      return;
+    }
+    setJobToApply(job);
+    setShowApplyModal(true);
   };
 
-  // ----------------- Add / Edit Job -----------------
+  const confirmApply = () => {
+    if (!agreeToTerms) {
+      alert("Please agree to the terms.");
+      return;
+    }
+    setAppliedJobs((prev) => new Set(prev).add(jobToApply._id));
+
+    // ✅ Recruiter can later see who applied (mock data for demo)
+    setApplicantsData((prev) => [
+      ...prev,
+      { userName: "Demo User", jobTitle: jobToApply.title },
+    ]);
+
+    alert(`Application submitted for ${jobToApply.title}!`);
+    setShowApplyModal(false);
+    setAgreeToTerms(false);
+    setJobToApply(null);
+  };
+
+  // ----------------- Recruiter: Add/Edit/Delete -----------------
   const openAddModal = () => {
     setIsEditing(false);
     setJobForm({
@@ -158,7 +181,6 @@ const Jobs = () => {
     e.preventDefault();
     try {
       if (isEditing) {
-        // Update existing job
         const res = await axios.put(
           `http://localhost:8000/api/v1/job/${selectedJob._id}`,
           jobForm
@@ -168,8 +190,10 @@ const Jobs = () => {
         );
         alert("Job updated successfully!");
       } else {
-        // Add new job
-       const res = await axios.post("http://localhost:8000/api/v1/job/create", jobForm);
+        const res = await axios.post(
+          "http://localhost:8000/api/v1/job/create",
+          jobForm
+        );
         setJobs((prev) => [...prev, res.data.job]);
         alert("New job added!");
       }
@@ -180,7 +204,7 @@ const Jobs = () => {
     }
   };
 
-  // ----------------- Filtered Jobs -----------------
+  // ----------------- Filters -----------------
   const filteredJobs = jobs.filter(
     (job) =>
       (job.title || "").toLowerCase().includes(filters.title.toLowerCase()) &&
@@ -194,89 +218,187 @@ const Jobs = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      <Navbar role={role} setRole={setRole} />
+
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Filter and Add Button */}
+        {/* Top Section */}
         <div className="flex justify-between items-center mb-6">
           <FilterCard filters={filters} setFilters={setFilters} />
-          <button
-            onClick={openAddModal}
-            className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700"
-          >
-            ➕ Add Task
-          </button>
+          <div className="flex space-x-2">
+            {role === "user" && (
+              <button
+                onClick={() => setShowAppliedList(!showAppliedList)}
+                className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
+              >
+                👁️ View Applied Jobs
+              </button>
+            )}
+
+            {role === "recruiter" && (
+              <>
+                <button
+                  onClick={openAddModal}
+                  className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700"
+                >
+                  ➕ Add Job
+                </button>
+                <button
+                  onClick={() => setShowApplicantsList(!showApplicantsList)}
+                  className="bg-purple-600 text-white px-5 py-2 rounded-lg hover:bg-purple-700"
+                >
+                  🧾 View Applicants
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Job List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Applicants for Recruiter */}
+        {showApplicantsList && role === "recruiter" && (
+          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h3 className="text-lg font-semibold mb-4">Applicants</h3>
+            {applicantsData.length > 0 ? (
+              <ul className="list-disc pl-5">
+                {applicantsData.map((a, i) => (
+                  <li key={i}>
+                    <strong>{a.userName}</strong> applied for{" "}
+                    <span className="text-green-600">{a.jobTitle}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No applications yet.</p>
+            )}
+          </div>
+        )}
+
+        {/* User Applied Jobs */}
+        {showAppliedList && role === "user" && (
+          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h3 className="text-lg font-semibold mb-4">Jobs You Applied For</h3>
+            {Array.from(appliedJobs).length > 0 ? (
+              <ul className="list-disc pl-5">
+                {jobs
+                  .filter((job) => appliedJobs.has(job._id))
+                  .map((job) => (
+                    <li key={job._id}>
+                      {job.title} at {job.company?.name || job.company} (
+                      {job.location})
+                    </li>
+                  ))}
+              </ul>
+            ) : (
+              <p>No jobs applied yet.</p>
+            )}
+          </div>
+        )}
+
+        {/* Jobs List */}
+        <div
+          ref={jobListRef}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {filteredJobs.length > 0 ? (
-            filteredJobs.map((job) => (
-              <div
-                key={job._id}
-                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
-              >
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+            filteredJobs.map((job) => {
+              const isApplied = appliedJobs.has(job._id);
+              return (
+                <div
+                  key={job._id}
+                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300"
+                >
+                  <h3 className="text-xl font-semibold mb-1">
                     {job.title || "Untitled Job"}
                   </h3>
                   <p className="text-green-600 font-medium mb-1">
                     {job.company?.name || job.company || "Unknown Company"}
                   </p>
                   <p className="text-gray-600 mb-2">
-                    📍 {job.location || "Unknown Location"}
+                    📍 {job.location || "Unknown"}
                   </p>
-                  <p className="text-gray-700 mb-4 line-clamp-3">
-                    {job.description || "No description available."}
+                  <p className="text-gray-700 mb-3 line-clamp-3">
+                    {job.description || "No description."}
                   </p>
 
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-lg font-bold text-green-600">
-                      {job.salary || "Negotiable"}
-                    </span>
+                  {role === "user" && (
                     <button
                       onClick={() => handleApplyNow(job)}
-                      disabled={appliedJobs.has(job._id)}
-                      className={`px-4 py-2 rounded-lg transition-colors ${
-                        appliedJobs.has(job._id)
+                      disabled={isApplied}
+                      className={`px-4 py-2 rounded-lg w-full ${
+                        isApplied
                           ? "bg-gray-400 text-gray-200"
                           : "bg-green-500 text-white hover:bg-green-600"
                       }`}
                     >
-                      {appliedJobs.has(job._id) ? "Applied" : "Apply"}
+                      {isApplied ? "Applied" : "Apply"}
                     </button>
-                  </div>
+                  )}
 
-                  {/* New Buttons */}
-                  <div className="flex justify-between">
-                    <button
-                      onClick={() => openEditModal(job)}
-                      className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600"
-                    >
-                      ✏️ Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(job._id)}
-                      className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
+                  {role === "recruiter" && (
+                    <div className="flex justify-between mt-3">
+                      <button
+                        onClick={() => openEditModal(job)}
+                        className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(job._id)}
+                        className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
-            <p className="text-gray-600 text-center col-span-full">
-              No jobs found with these filters.
+            <p className="text-center text-gray-600 col-span-full">
+              No jobs found.
             </p>
           )}
         </div>
       </div>
 
-      {/* ----------------- Add/Edit Modal ----------------- */}
+      {/* Apply Modal */}
+      {showApplyModal && jobToApply && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">
+              Apply for {jobToApply.title}
+            </h2>
+            <label className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                checked={agreeToTerms}
+                onChange={(e) => setAgreeToTerms(e.target.checked)}
+                className="mr-2"
+              />
+              I agree to the terms and conditions.
+            </label>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowApplyModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmApply}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              >
+                Confirm Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">
               {isEditing ? "Edit Job" : "Add New Job"}
             </h2>
             <form onSubmit={handleSubmitJob}>
@@ -327,7 +449,6 @@ const Jobs = () => {
                 placeholder="Job Description"
                 className="w-full mb-4 px-3 py-2 border rounded-md"
               />
-
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"

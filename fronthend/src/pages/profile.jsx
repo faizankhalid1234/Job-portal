@@ -15,7 +15,7 @@ const Home = () => {
       }
 
       try {
-        const response = await fetch('http://localhost:8000/api/v1/user/profile', {
+        const response = await fetch('http://localhost:8000/api/v1/user/me', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -38,8 +38,9 @@ const Home = () => {
     navigate('/login');
   };
 
-  if (!profileData)
+  if (!profileData) {
     return <p className="text-center text-lg text-blue-600 mt-20">Loading...</p>;
+  }
 
   const {
     firstName,
@@ -55,7 +56,6 @@ const Home = () => {
     ? `http://localhost:8000${profile.profilePicture}`
     : '/default-avatar.png';
 
-
   const companies = [
     { name: 'TechCorp', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbY-b_vPyemUa8xXInkAKH__I89wqw296iEQ&s' },
     { name: 'DataInsights', logo: 'https://afrisk-analytics.com/wp-content/uploads/2019/02/data-insight-action-logo.png' },
@@ -69,7 +69,7 @@ const Home = () => {
       <header className="bg-white shadow flex justify-between items-center px-6 py-4">
         <div className="flex items-center space-x-3">
           <img
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbY-b_vPyemUa8xXInkAKH__I89wqw296iEQ&s"
+            src="https://media.wired.com/photos/5926ffe47034dc5f91bed4e8/master/pass/google-logo.jpg"
             alt="Company Logo"
             className="w-12 h-12 object-contain rounded-md"
           />
@@ -133,14 +133,13 @@ const Home = () => {
                 Download Resume
               </button>
               <div className="mt-6">
-  <button
-    onClick={() => navigate('/update-profile')} // yahan route rakhna
-    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-  >
-    Update Profile
-  </button>
-</div>
-
+                <button
+                  onClick={() => navigate('/update-profile')}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Update Profile
+                </button>
+              </div>
             </div>
           </div>
         </div>

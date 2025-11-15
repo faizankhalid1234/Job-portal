@@ -1,18 +1,20 @@
-import express from "express";
-import { registerUser, loginUser, updateProfile, getProfile } from "../controllers/user.controller.js";
-import isAuthenticated from "../middlewares/isAuthenticated.js";
-import upload from "../middlewares/multer.js"; // agar files upload karte ho
+import express from 'express';
+import { registerUser, loginUser, updateProfile, getProfile } from '../CONTROLLERS/user.controller.js';
+import upload from '../middlewares/upload.js';  // ✅ only once
+import { isAuthenticated } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// ✅ Register user
-router.post("/register", upload.any(), registerUser);
+// Register route with image upload
+router.post("/register", upload.single("profileImage"), registerUser);
 
-// ✅ Login user
+// Update profile with image upload
+router.put("/update", isAuthenticated, upload.single("profileImage"), updateProfile);
+
+// Login route
 router.post("/login", loginUser);
 
-// ✅ Get & Update profile (protected)
-router.get("/profile", isAuthenticated, getProfile);
-router.put("/update", isAuthenticated, upload.any(), updateProfile);
+// Get current user profile
+router.get("/me", isAuthenticated, getProfile);
 
 export default router;
